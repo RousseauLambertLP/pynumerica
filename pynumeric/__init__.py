@@ -22,7 +22,12 @@ from collections import OrderedDict
 from datetime import datetime
 import logging
 
-from osgeo import gdal, ogr, osr
+try:
+    from osgeo import gdal, ogr, osr
+    __gdal_version__ = gdal.__version__
+except ImportError:
+    __gdal_version__ = None
+
 from six import StringIO
 
 import click
@@ -32,17 +37,17 @@ __version__ = '0.1.1'
 LOGGER = logging.getLogger(__name__)
 
 
-class Numerica(object):
-    """MSC URP Numerica object model"""
+class Numeric(object):
+    """MSC URP Numeric object model"""
 
     def __init__(self, ioobj=None, filename=None):
         """
-        Initialize a Numerica object
+        Initialize a Numeric object
 
         :param iooobj: file or StringIO object
         :param filename: filename (optional)
 
-        :returns: pynumerica.Numerica instance
+        :returns: pynumeric.Numeric instance
         """
 
         self.filename = filename
@@ -56,10 +61,10 @@ class Numerica(object):
 
         filelines = ioobj.readlines()
 
-        LOGGER.debug('Detecting if file is a Numerica file')
-        is_numerica = [s for s in filelines if 'MajorProductType RADAR' in s]
-        if not is_numerica:
-            raise InvalidDataError('Unable to detect Numerica format')
+        LOGGER.debug('Detecting if file is a Numeric file')
+        is_numeric = [s for s in filelines if 'MajorProductType RADAR' in s]
+        if not is_numeric:
+            raise InvalidDataError('Unable to detect Numeric format')
 
         LOGGER.debug('Parsing lines')
         for line in filelines:
@@ -107,7 +112,7 @@ class Numerica(object):
 
     def to_grid(self, filename='out.tif', fmt='GTiff'):
         """
-        transform numerica data into raster grid
+        transform numeric data into raster grid
 
         :param filename: filename of output file
         :param fmt: file format.  Supported are any of the supported GDAL
@@ -115,6 +120,9 @@ class Numerica(object):
 
         :returns: boolean (file saved on disk)
         """
+
+        if __gdal_version__ is None:
+            raise RuntimeError('GDAL Python package is required')
 
         LOGGER.debug('Creating OGR vector layer in memory')
         outdriver = ogr.GetDriverByName('MEMORY')
@@ -177,46 +185,64 @@ class InvalidDataError(Exception):
 
 def load(filename):
     """
-    Parse Numerica data from from file
+    Parse Numeric data from from file
     :param filename: filename
-    :returns: pynumerica.Numerica object
+    :returns: pynumeric.Numeric object
     """
 
     with open(filename) as ff:
-        return Numerica(ff, filename=filename)
+        return Numeric(ff, filename=filename)
 
 
 def loads(strbuf):
     """
-    Parse Numerica data from string
-    :param strbuf: string representation of Numerica data
-    :returns: pynumerica.Numerica object
+    Parse Numeric data from string
+    :param strbuf: string representation of Numeric data
+    :returns: pynumeric.Numeric object
     """
 
     s = StringIO(strbuf)
-    return Numerica(s)
+    return Numeric(s)
+
+
+def gdal_version_callback(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(__gdal_version__)
+    ctx.exit()
+
+
+@click.group()
+@click.version_option(version=__version__)
+@click.option('--gdal-version', is_flag=True, is_eager=True,
+              callback=gdal_version_callback,
+              help='Show the GDAL version and exit.')
+def cli(gdal_version):
+    if gdal_version:
+        click.echo(__gdal_version__)
+    pass
 
 
 @click.command()
-@click.version_option(version=__version__)
+@click.pass_context
 @click.option('--file', '-f', 'file_',
               type=click.Path(exists=True, resolve_path=True),
-              help='Path to Numerica data file')
+              help='Path to Numeric data file')
 @click.option('--verbosity', type=click.Choice(['ERROR', 'WARNING',
               'INFO', 'DEBUG']), help='Verbosity')
-def numerica_info(file_, verbosity):
-    """parse Numerica data files"""
+def report(ctx, file_, verbosity):
+    """parse Numeric data files"""
 
     if verbosity is not None:
         logging.basicConfig(level=getattr(logging, verbosity))
 
     if file_ is None:
-        raise click.ClickException('Missing --file argument')
+        raise click.ClickException('Missing argument')
 
     with open(file_) as fh:
         try:
-            n = Numerica(fh, filename=file_)
-            click.echo('Numerica file: {}\n'.format(n.filename))
+            n = Numeric(fh, filename=file_)
+            click.echo('Numeric file: {}\n'.format(n.filename))
             click.echo('Metadata:')
             for key, value in n.metadata.items():
                 click.echo(' {}: {}'.format(key, value))
@@ -229,3 +255,39 @@ def numerica_info(file_, verbosity):
                 data_range[0], data_range[1]))
         except Exception as err:
             raise click.ClickException(str(err))
+
+
+@click.command()
+@click.pass_context
+@click.option('--file', '-f', 'file_in',
+              type=click.Path(exists=True, resolve_path=True),
+              help='Path to Numeric data file')
+@click.option('--output', '-o', 'file_out',
+              type=click.Path(exists=False, resolve_path=True),
+              help='Path to output data file')
+@click.option('--format', '-of', 'format_', help='Output format')
+@click.option('--verbosity', type=click.Choice(['ERROR', 'WARNING',
+              'INFO', 'DEBUG']), help='Verbosity')
+def export(ctx, file_in, file_out, format_, verbosity):
+    """parse Numeric data files"""
+
+    if verbosity is not None:
+        logging.basicConfig(level=getattr(logging, verbosity))
+
+    if file_in is None or file_out is None or format_ is None:
+        raise click.ClickException('Missing arguments')
+
+    with open(file_in) as fh:
+        try:
+            click.echo('Exporting {} to {} ({})'.format(file_in,
+                       file_out, format_))
+            n = Numeric(fh, filename=file_in)
+            status = n.to_grid(filename=file_out, fmt=format_)
+            if status:
+                click.echo('Done')
+        except Exception as err:
+            raise click.ClickException(str(err))
+
+
+cli.add_command(report)
+cli.add_command(export)

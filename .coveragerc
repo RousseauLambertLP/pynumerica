@@ -1,11 +1,16 @@
 [run]
-source=pynumerica
+source=pynumeric
 
 [report]
 exclude_lines =
     pragma: no cover
     def __repr__
-    def numerica_info
+    def report
+    def export
+    def gdal_version_callback
+    def cli
     if __name__ == .__main__.:
+    ImportError
+    __gdal_version__
 omit =
-    pynumerica/tests/*
+    pynumeric/tests/*
