@@ -21,14 +21,13 @@
 from collections import OrderedDict
 from datetime import datetime
 import logging
-import os
 
 from osgeo import gdal, ogr, osr
 from six import StringIO
 
 import click
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 LOGGER = logging.getLogger(__name__)
 
@@ -55,9 +54,6 @@ class Numerica(object):
         self.data = []
         """data fields"""
 
-        if filename is not None:
-            self.filename = os.path.basename(filename)
-
         filelines = ioobj.readlines()
 
         LOGGER.debug('Detecting if file is a Numerica file')
@@ -71,7 +67,7 @@ class Numerica(object):
                 key, value = [s.strip() for s in line.split(' ', 1)]
             except ValueError:
                 LOGGER.error('Malformed line: {}'.format(line))
-            if key in ['Width', 'Height', 'HornHeight', 'GroundHeight']:
+            if key in ['Width', 'Height']: #, 'HornHeight', 'GroundHeight'
                 LOGGER.debug('Casting {} as int'.format(value))
                 self.metadata[key] = int(value)
             elif key in ['LatCentre', 'LonCentre', 'LatitudeIncrement',
@@ -88,6 +84,7 @@ class Numerica(object):
                 data = [','.join(v[i:i+n]) for i in range(0, len(v), n)]
 
                 for d in data:
+
                     self.data.append([float(i) for i in d.split(',')])
             else:
                 LOGGER.debug('Casting {} as string'.format(value))
@@ -120,18 +117,19 @@ class Numerica(object):
         """
 
         LOGGER.debug('Creating OGR vector layer in memory')
-        vsource = ogr.GetDriverByName('MEMORY').CreateDataSource('memory')
+        outdriver = ogr.GetDriverByName('MEMORY')
+        source = outdriver.CreateDataSource('radar')
 
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)
 
-        vlayer = vsource.CreateLayer('memory', srs, ogr.wkbPoint)
+        layer = source.CreateLayer('radar', srs, ogr.wkbPoint)
 
-        vlayer.CreateField(ogr.FieldDefn('value', ogr.OFTReal))
+        layer.CreateField(ogr.FieldDefn('value', ogr.OFTReal))
 
         for d in self.data:
-            vfeature = ogr.Feature(vlayer.GetLayerDefn())
-            vfeature.SetField('value', d[2])
+            feature = ogr.Feature(layer.GetLayerDefn())
+            feature.SetField('value', d[2])
 
             # create the WKT for the feature using Python string formatting
             wkt = 'POINT(%f %f)' % (d[1], d[0])
@@ -140,11 +138,11 @@ class Numerica(object):
             point = ogr.CreateGeometryFromWkt(wkt)
 
             # Set the feature geometry using the point
-            vfeature.SetGeometry(point)
+            feature.SetGeometry(point)
             # Create the feature in the layer (shapefile)
-            vlayer.CreateFeature(vfeature)
+            layer.CreateFeature(feature)
             # Dereference the feature
-            vfeature = None
+            feature = None
 
         LOGGER.debug('Creating GDAL raster layer')
         width = self.metadata['Width']
@@ -157,22 +155,17 @@ class Numerica(object):
         maxy = ((self.metadata['LatCentre'] + resy * (height / 2)) -
                 (resy / 2))
 
-        dsource = gdal.GetDriverByName(fmt).Create(filename, width, height,
-                                                   1, gdal.GDT_Float64)
+        target_ds = gdal.GetDriverByName(fmt).Create(filename, width, height,
+                                                     1, gdal.GDT_Float64)
 
-        dsource.SetProjection(srs.ExportToWkt())
+        target_ds.SetProjection(srs.ExportToWkt())
 
-        dsource.SetGeoTransform((minx, resx, 0.0, maxy, 0.0, -resy))
-        dband = dsource.GetRasterBand(1)
-        dband.SetNoDataValue(-9999)
+        target_ds.SetGeoTransform((minx, resx, 0.0, maxy, 0.0, -resy))
+        band = target_ds.GetRasterBand(1)
+        band.SetNoDataValue(-9999)
 
         LOGGER.debug('Rastering virtual vector data')
-        gdal.RasterizeLayer(dsource, [1], vlayer, options=['ATTRIBUTE=value'])
-        LOGGER.info('Filename {} saved to disk'.format(filename))
-
-        LOGGER.debug('Freeing data sources')
-        vsource = None
-        dsource = None
+        gdal.RasterizeLayer(target_ds, [1], layer, options=['ATTRIBUTE=value'])
 
         return True
 
