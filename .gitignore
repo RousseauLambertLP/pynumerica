@@ -19,7 +19,6 @@ lib/
 lib64/
 parts/
 sdist/
-pynumerica/old_test/
 var/
 wheels/
 *.egg-info/

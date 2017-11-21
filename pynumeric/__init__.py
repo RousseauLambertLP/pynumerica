@@ -21,6 +21,7 @@
 from collections import OrderedDict
 from datetime import datetime
 import logging
+import os
 
 try:
     from osgeo import gdal, ogr, osr
@@ -59,6 +60,9 @@ class Numeric(object):
         self.data = []
         """data fields"""
 
+        if filename is not None:
+            self.filename = os.path.basename(filename)
+
         filelines = ioobj.readlines()
 
         LOGGER.debug('Detecting if file is a Numeric file')
@@ -89,7 +93,6 @@ class Numeric(object):
                 data = [','.join(v[i:i+n]) for i in range(0, len(v), n)]
 
                 for d in data:
-
                     self.data.append([float(i) for i in d.split(',')])
             else:
                 LOGGER.debug('Casting {} as string'.format(value))
@@ -125,19 +128,18 @@ class Numeric(object):
             raise RuntimeError('GDAL Python package is required')
 
         LOGGER.debug('Creating OGR vector layer in memory')
-        outdriver = ogr.GetDriverByName('MEMORY')
-        source = outdriver.CreateDataSource('radar')
+        vsource = ogr.GetDriverByName('MEMORY').CreateDataSource('memory')
 
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)
 
-        layer = source.CreateLayer('radar', srs, ogr.wkbPoint)
+        vlayer = vsource.CreateLayer('memory', srs, ogr.wkbPoint)
 
-        layer.CreateField(ogr.FieldDefn('value', ogr.OFTReal))
+        vlayer.CreateField(ogr.FieldDefn('value', ogr.OFTReal))
 
         for d in self.data:
-            feature = ogr.Feature(layer.GetLayerDefn())
-            feature.SetField('value', d[2])
+            vfeature = ogr.Feature(vlayer.GetLayerDefn())
+            vfeature.SetField('value', d[2])
 
             # create the WKT for the feature using Python string formatting
             wkt = 'POINT(%f %f)' % (d[1], d[0])
@@ -146,11 +148,11 @@ class Numeric(object):
             point = ogr.CreateGeometryFromWkt(wkt)
 
             # Set the feature geometry using the point
-            feature.SetGeometry(point)
+            vfeature.SetGeometry(point)
             # Create the feature in the layer (shapefile)
-            layer.CreateFeature(feature)
+            vlayer.CreateFeature(vfeature)
             # Dereference the feature
-            feature = None
+            vfeature = None
 
         LOGGER.debug('Creating GDAL raster layer')
         width = self.metadata['Width']
@@ -163,17 +165,22 @@ class Numeric(object):
         maxy = ((self.metadata['LatCentre'] + resy * (height / 2)) -
                 (resy / 2))
 
-        target_ds = gdal.GetDriverByName(fmt).Create(filename, width, height,
-                                                     1, gdal.GDT_Float64)
+        dsource = gdal.GetDriverByName(fmt).Create(filename, width, height,
+                                                   1, gdal.GDT_Float64)
 
-        target_ds.SetProjection(srs.ExportToWkt())
+        dsource.SetProjection(srs.ExportToWkt())
 
-        target_ds.SetGeoTransform((minx, resx, 0.0, maxy, 0.0, -resy))
-        band = target_ds.GetRasterBand(1)
-        band.SetNoDataValue(-9999)
+        dsource.SetGeoTransform((minx, resx, 0.0, maxy, 0.0, -resy))
+        dband = dsource.GetRasterBand(1)
+        dband.SetNoDataValue(-9999)
 
         LOGGER.debug('Rastering virtual vector data')
-        gdal.RasterizeLayer(target_ds, [1], layer, options=['ATTRIBUTE=value'])
+        gdal.RasterizeLayer(dsource, [1], vlayer, options=['ATTRIBUTE=value'])
+        LOGGER.info('Filename {} saved to disk'.format(filename))
+
+        LOGGER.debug('Freeing data sources')
+        vsource = None
+        dsource = None
 
         return True
 
