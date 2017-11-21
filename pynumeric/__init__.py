@@ -72,11 +72,7 @@ class Numeric(object):
                 key, value = [s.strip() for s in line.split(' ', 1)]
             except ValueError:
                 LOGGER.error('Malformed line: {}'.format(line))
-<<<<<<< HEAD
-            if key in ['Width', 'Height']: #, 'HornHeight', 'GroundHeight'
-=======
             if key in ['Width', 'Height']:
->>>>>>> d1bdde81712c4beadbadaa7bf48a928bfbe070f2
                 LOGGER.debug('Casting {} as int'.format(value))
                 self.metadata[key] = int(value)
             elif key in ['LatCentre', 'LonCentre', 'LatitudeIncrement',
