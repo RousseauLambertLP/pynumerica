@@ -33,7 +33,7 @@ from six import StringIO
 
 import click
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 LOGGER = logging.getLogger(__name__)
 
@@ -165,8 +165,9 @@ class Numeric(object):
         maxy = ((self.metadata['LatCentre'] + resy * (height / 2)) -
                 (resy / 2))
 
-        dsource = gdal.GetDriverByName(fmt).Create(filename, width, height,
-                                                   1, gdal.GDT_Float64)
+        dsource = gdal.GetDriverByName(str(fmt)).Create(filename, width,
+                                                        height, 1,
+                                                        gdal.GDT_Float64)
 
         dsource.SetProjection(srs.ExportToWkt())
 
@@ -242,6 +243,8 @@ def report(ctx, file_, verbosity):
 
     if verbosity is not None:
         logging.basicConfig(level=getattr(logging, verbosity))
+    else:
+        LOGGER = logging.getLogger(__name__).addHandler(logging.NullHandler())
 
     if file_ is None:
         raise click.ClickException('Missing argument')
@@ -280,6 +283,8 @@ def export(ctx, file_in, file_out, format_, verbosity):
 
     if verbosity is not None:
         logging.basicConfig(level=getattr(logging, verbosity))
+    else:
+        LOGGER = logging.getLogger(__name__).addHandler(logging.NullHandler())
 
     if file_in is None or file_out is None or format_ is None:
         raise click.ClickException('Missing arguments')
