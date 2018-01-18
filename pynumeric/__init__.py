@@ -244,7 +244,11 @@ def report(ctx, file_, verbosity):
     if verbosity is not None:
         logging.basicConfig(level=getattr(logging, verbosity))
     else:
+<<<<<<< HEAD
         LOGGER = logging.getLogger(__name__).addHandler(logging.NullHandler())
+=======
+        logging.getLogger(__name__).addHandler(logging.NullHandler())
+>>>>>>> 25df3f24f5038f584be7d4750837e113a64ac300
 
     if file_ is None:
         raise click.ClickException('Missing argument')
@@ -284,7 +288,11 @@ def export(ctx, file_in, file_out, format_, verbosity):
     if verbosity is not None:
         logging.basicConfig(level=getattr(logging, verbosity))
     else:
+<<<<<<< HEAD
         LOGGER = logging.getLogger(__name__).addHandler(logging.NullHandler())
+=======
+        logging.getLogger(__name__).addHandler(logging.NullHandler())
+>>>>>>> 25df3f24f5038f584be7d4750837e113a64ac300
 
     if file_in is None or file_out is None or format_ is None:
         raise click.ClickException('Missing arguments')
