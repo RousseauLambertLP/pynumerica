@@ -65,6 +65,22 @@ pynumeric export -f </path/to/numeric_file> -o foo.tif -of NetCDF
 
 ```
 
+### Running with shell script
+
+```bash
+# convert one numeric file into GeoTIFF in /tmp/bar
+bash -f numeric2geotiff.sh /tmp/foo/numericfile /tmp/bar
+
+# Change the GeoTIFF georeference into /tmp/foo so they all have the same georeference and save it to /tmp/bar
+bash -f reproject_geotiff.sh /tmp/foo/geotiff.tiff /tmp/bar
+
+# Compress every Geotiffs in a folder if a folder is provided as input
+bash compress_geotiff.sh PACKBITS/DEFLATE/LZW tmp/foo tmp/bar
+
+# Compress a single Geotiff if a single GeoTIFF file is provided as input
+bash compress_geotiff.sh PACKBITS/DEFLATE/LZW tmp/foo/file.tif tmp/bar
+```
+
 ### Using the API
 ```python
 from pynumeric import Numeric
