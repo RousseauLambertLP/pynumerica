@@ -18,7 +18,10 @@
 #
 # =================================================================
 
-if [ "$#" -lt 2 ]; then
+if [[ $1 == --version ]] || [[ $1 == -V ]]; then
+    echo "Version 0.1"
+    exit 1
+elif [ "$#" -lt 2 ]; then
     echo "Usage: $0 <input file> <outputdir>"
     exit 1
 fi

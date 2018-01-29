@@ -18,24 +18,19 @@
 #
 # =================================================================
 
-if [ "$#" -lt 2 ]; then
+if [[ $1 == --version ]] || [[ $1 == -V ]]; then
+    echo "Version 0.1"
+    exit 1
+elif [ "$#" -lt 2 ]; then
     echo "Usage: $0 <input file (GeoTIFF)> <outputdir-GeoTIFF-Reprojected>"
     exit 1
 fi
 
 SRS=epsg:4326
-# # Values for all radars except Guam
+# Values for all radars except Guam
 EXTENT="-170.3238550 16.9346100 -50.0028550 67.1906100"
 WIDTH=6525
 HEIGHT=5584
-## Values for Canadian radars only
-# EXTENT="-126.6009205 41.2104430 -50.0066585 57.8493430"
-# WIDTH=5938
-# HEIGHT=1850
-# # Values for Canadian radars + US border radars
-#EXTENT="-126.6009205 37.2573430 -49.9977505 57.8493430"
-#WIDTH=6027
-#HEIGHT=2288
 
 mkdir -p $2
 

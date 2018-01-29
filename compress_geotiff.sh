@@ -18,7 +18,11 @@
 #
 # =================================================================
 
-if [ "$#" -lt 3 ]; then
+
+if [[ $1 == --version ]] || [[ $1 == -V ]]; then
+    echo "Version 0.1"
+    exit 1
+elif [ "$#" -lt 3 ]; then
     echo "Usage: $0 <compression method (PACKBITS/DEFLATE/LZW)> <input file/folder> <outputdir>"
     exit 1
 fi
