@@ -19,13 +19,13 @@
 # =================================================================
 
 if [[ $1 == --version ]] || [[ $1 == -V ]]; then
-    echo "Version 0.1"
+    echo "Version 0.2"
     exit 1
 elif [ "$#" -lt 2 ]; then
-    echo "Usage: $0 <input file> <outputdir>"
+    echo "Usage: $0 <input file> <outputdir> [--verbosity=ERROR/WARNING/INFO/DEBUG]"
     exit 1
 fi
 
 mkdir -p $2
 bn=`basename $1`
-pynumeric export -f "$1" -o "$2/$bn.tif" -of GTiff
+pynumeric export -f "$1" -o "$2/$bn.tif" -of GTiff "$3"
