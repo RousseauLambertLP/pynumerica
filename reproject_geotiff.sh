@@ -19,7 +19,7 @@
 # =================================================================
 
 if [[ $1 == --version ]] || [[ $1 == -V ]]; then
-    echo "Version 0.1"
+    echo "Version 0.2"
     exit 1
 elif [ "$#" -lt 2 ]; then
     echo "Usage: $0 <input file (GeoTIFF)> <outputdir-GeoTIFF-Reprojected>"
@@ -37,4 +37,6 @@ mkdir -p $2
 bn=`basename $1`
 file_="$1/$bn.tif"
 fileout_="$2/$bn.tif_reprojected.tif"
-gdalwarp -t_srs $SRS -te $EXTENT -ts $WIDTH $HEIGHT -srcnodata None $1 $fileout_
+
+gdalwarp -t_srs $SRS -te $EXTENT -ts $WIDTH $HEIGHT -srcnodata None -dstnodata -9999 $1 $fileout_
+gdal_edit.py -unsetnodata $fileout_
